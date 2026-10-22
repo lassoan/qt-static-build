@@ -68,11 +68,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: List Visual Studio installations
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -all -products * -format text |
+            Select-String "installationPath|installationVersion|displayName"
+          Get-ChildItem "$env:ProgramFiles\Microsoft Visual Studio\*\*\VC\Tools\MSVC\*" -Directory | Select-Object FullName
+
       - name: Setup MSVC environment
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: ${{ matrix.msvc_arch }}
+          # Runners may also have newer Visual Studio versions, whose static
+          # libraries could not be linked using Visual Studio 2022.
+          vsversion: "2022"
 
       - name: Build Qt (Windows)
         if: runner.os == 'Windows'
