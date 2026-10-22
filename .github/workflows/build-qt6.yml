@@ -81,9 +81,11 @@ jobs:
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: ${{ matrix.msvc_arch }}
-          # Runners may also have newer Visual Studio versions, whose static
-          # libraries could not be linked using Visual Studio 2022.
-          vsversion: "2022"
+          # Select the Visual Studio 2022 (v143) toolset: runners may only have
+          # newer Visual Studio versions (windows-11-arm has Visual Studio
+          # 2026), whose static libraries could not be linked using Visual
+          # Studio 2022.
+          toolset: "14.4"
 
       - name: Build Qt (Windows)
         if: runner.os == 'Windows'
