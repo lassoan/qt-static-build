@@ -70,9 +70,9 @@ Invoke-Checked cmake `
   -S $SmokeDir `
   -B (Join-Path $WorkDir "smoke") `
   -G Ninja `
-  -DCMAKE_BUILD_TYPE:STRING=Release `
-  -DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=MultiThreaded `
-  -DCMAKE_PREFIX_PATH:PATH=$Prefix
+  "-DCMAKE_BUILD_TYPE:STRING=Release" `
+  "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=MultiThreaded" `
+  "-DCMAKE_PREFIX_PATH:PATH=$Prefix"
 Invoke-Checked cmake --build (Join-Path $WorkDir "smoke")
 
 Push-Location $WorkDir
