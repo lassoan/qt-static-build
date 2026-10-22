@@ -5,14 +5,21 @@
 #
 set -euo pipefail
 
-dnf install -y epel-release
-
 # EPEL (needed for xcb-util-cursor-devel) mirrors are often unreachable or
-# mid-sync, so use the primary server and retry.
-sed -i \
-  -e 's|^metalink=|#metalink=|' \
-  -e 's|^#baseurl=.*/epel/|baseurl=https://dl.fedoraproject.org/pub/epel/|' \
-  /etc/yum.repos.d/epel.repo
+# mid-sync, so replace the EPEL repo configuration (preinstalled in the
+# manylinux image) with one using the primary server, and retry.
+if [[ ! -f /etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-8 ]]; then
+  dnf install -y --disablerepo='epel*' epel-release
+fi
+rm -f /etc/yum.repos.d/epel*.repo
+cat > /etc/yum.repos.d/epel.repo << 'EOF'
+[epel]
+name=Extra Packages for Enterprise Linux 8 - $basearch
+baseurl=https://dl.fedoraproject.org/pub/epel/8/Everything/$basearch/
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-8
+EOF
 
 for attempt in 1 2 3; do
   if dnf install -y --setopt=retries=10 \
