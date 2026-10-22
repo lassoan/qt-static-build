@@ -65,11 +65,16 @@ if [[ "$downloaded" != true ]]; then
 fi
 tar -xf "$archive" -C "$src_dir" --strip-components=1
 
+# Size optimization and leaving out the built-in MIME database and time zone
+# support (about 4 MB each) reduce the size of the executables linking Qt.
 cd "$build_dir"
 "$src_dir/configure" \
   -prefix "$prefix" \
   -release \
   -static \
+  -optimize-size \
+  -no-feature-mimetype-database \
+  -no-feature-timezone \
   -nomake examples \
   -nomake tests \
   -no-opengl \

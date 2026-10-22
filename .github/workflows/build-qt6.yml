@@ -163,6 +163,11 @@ jobs:
           \`-DQt6_DIR=<dir>/lib/cmake/Qt6\` or \`-DCMAKE_PREFIX_PATH=<dir>\`.
 
           On Windows, consumers must link the static MSVC runtime (\`-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded\`).
+          The Windows libraries are built with link-time code generation, so they must be linked using the
+          Visual Studio 2022 (v143) toolset, preferably with \`-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON\`.
+
+          To reduce the size of executables, Qt is built optimized for size and without the built-in
+          MIME database and time zone support (\`-no-feature-mimetype-database -no-feature-timezone\`).
           On Linux, linking requires the X11/xcb, xkbcommon, and fontconfig development packages
           (see \`scripts/install-linux-deps.sh\`).
 
