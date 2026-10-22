@@ -58,13 +58,26 @@ foreach ($Mirror in $Mirrors) {
   }
   $ActualSha256 = (Get-FileHash -Algorithm SHA256 $Archive).Hash
   if ($ActualSha256 -eq $ExpectedSha256) {
+    Write-Host "Downloaded $Archive (SHA256 $ActualSha256)"
     $Downloaded = $true
     break
   }
   Write-Host "SHA256 mismatch for $Archive from ${Mirror}: expected $ExpectedSha256, got $ActualSha256"
 }
 if (-not $Downloaded) { throw "Failed to download $Archive" }
-Invoke-Checked C:\Windows\System32\tar.exe -xf $Archive -C $SrcDir --strip-components=1
+
+# The tar.exe shipped with Windows Server 2022 lacks built-in xz support and
+# hangs, so extract using CMake and move the top-level directory into place.
+Write-Host "Extracting $Archive"
+$ExtractDir = Join-Path $WorkDir "x"
+New-Item -ItemType Directory -Force $ExtractDir | Out-Null
+Push-Location $ExtractDir
+Invoke-Checked cmake -E tar xf $Archive
+Pop-Location
+Remove-Item -Recurse -Force $SrcDir
+Move-Item (Join-Path $ExtractDir "qtbase-everywhere-src-$QtVersion") $SrcDir
+
+Write-Host "Configuring Qt"
 
 Push-Location $BuildDir
 Invoke-Checked "$SrcDir\configure.bat" `
