@@ -34,15 +34,36 @@ New-Item -ItemType Directory -Force $SrcDir, $BuildDir | Out-Null
 
 $QtMinor = $QtVersion.Substring(0, $QtVersion.LastIndexOf("."))
 $Archive = Join-Path $WorkDir "qtbase-everywhere-src-$QtVersion.tar.xz"
-$Url = "https://download.qt.io/archive/qt/$QtMinor/$QtVersion/submodules/qtbase-everywhere-src-$QtVersion.tar.xz"
+$ArchivePath = "archive/qt/$QtMinor/$QtVersion/submodules/qtbase-everywhere-src-$QtVersion.tar.xz"
 
-Write-Host "Downloading $Url"
-Invoke-Checked curl.exe -fsSL -o $Archive $Url
-$ExpectedSha256 = ((Invoke-Checked curl.exe -fsSL "$Url.sha256") -split "\s+")[0]
-$ActualSha256 = (Get-FileHash -Algorithm SHA256 $Archive).Hash
-if ($ActualSha256 -ne $ExpectedSha256) {
-  throw "SHA256 mismatch for ${Archive}: expected $ExpectedSha256, got $ActualSha256"
+# The download.qt.io redirector may pick a stalled mirror, so abort slow
+# transfers and fall back to other mirrors.
+$Mirrors = @(
+  "https://download.qt.io"
+  "https://qt.mirror.constant.com"
+  "https://mirrors.ocf.berkeley.edu/qt"
+  "https://ftp.fau.de/qtproject"
+)
+$CurlArgs = @("-fsSL", "--connect-timeout", "30", "--speed-limit", "10000", "--speed-time", "60")
+
+$ExpectedSha256 = ((Invoke-Checked curl.exe @CurlArgs --retry 5 "https://download.qt.io/$ArchivePath.sha256") -split "\s+")[0]
+$Downloaded = $false
+foreach ($Mirror in $Mirrors) {
+  Write-Host "Downloading $Mirror/$ArchivePath"
+  Remove-Item -Force -ErrorAction SilentlyContinue $Archive
+  & curl.exe @CurlArgs -o $Archive "$Mirror/$ArchivePath"
+  if ($LastExitCode -ne 0) {
+    Write-Host "Download from $Mirror failed with exit code $LastExitCode"
+    continue
+  }
+  $ActualSha256 = (Get-FileHash -Algorithm SHA256 $Archive).Hash
+  if ($ActualSha256 -eq $ExpectedSha256) {
+    $Downloaded = $true
+    break
+  }
+  Write-Host "SHA256 mismatch for $Archive from ${Mirror}: expected $ExpectedSha256, got $ActualSha256"
 }
+if (-not $Downloaded) { throw "Failed to download $Archive" }
 Invoke-Checked C:\Windows\System32\tar.exe -xf $Archive -C $SrcDir --strip-components=1
 
 Push-Location $BuildDir

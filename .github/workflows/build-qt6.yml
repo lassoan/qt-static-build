@@ -33,6 +33,9 @@ jobs:
   build:
     name: ${{ matrix.platform }}-${{ matrix.arch }}
     runs-on: ${{ matrix.runner }}
+    # Builds take well under an hour; fail stalled jobs instead of waiting
+    # for the 6 hour default.
+    timeout-minutes: 180
     permissions:
       contents: read
     strategy:

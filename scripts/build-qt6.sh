@@ -24,21 +24,43 @@ prefix=$work_dir/$name
 
 qt_minor=${qt_version%.*}
 archive=qtbase-everywhere-src-$qt_version.tar.xz
-url=https://download.qt.io/archive/qt/$qt_minor/$qt_version/submodules/$archive
+archive_path=archive/qt/$qt_minor/$qt_version/submodules/$archive
+
+# The download.qt.io redirector may pick a stalled mirror, so abort slow
+# transfers and fall back to other mirrors.
+mirrors=(
+  https://download.qt.io
+  https://qt.mirror.constant.com
+  https://mirrors.ocf.berkeley.edu/qt
+  https://ftp.fau.de/qtproject
+)
+curl_args=(-fsSL --connect-timeout 30 --speed-limit 10000 --speed-time 60)
 
 mkdir -p "$work_dir" "$src_dir" "$build_dir"
 cd "$work_dir"
 
-echo "Downloading $url"
-curl -fsSL -o "$archive" "$url"
-expected_sha256=$(curl -fsSL "$url.sha256" | cut -d' ' -f1)
-if command -v sha256sum > /dev/null; then
-  actual_sha256=$(sha256sum "$archive" | cut -d' ' -f1)
-else
-  actual_sha256=$(shasum -a 256 "$archive" | cut -d' ' -f1)
-fi
-if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-  echo "SHA256 mismatch for $archive: expected $expected_sha256, got $actual_sha256" >&2
+expected_sha256=$(curl "${curl_args[@]}" --retry 5 "https://download.qt.io/$archive_path.sha256" | cut -d' ' -f1)
+downloaded=false
+for mirror in "${mirrors[@]}"; do
+  echo "Downloading $mirror/$archive_path"
+  rm -f "$archive"
+  if ! curl "${curl_args[@]}" -o "$archive" "$mirror/$archive_path"; then
+    echo "Download from $mirror failed"
+    continue
+  fi
+  if command -v sha256sum > /dev/null; then
+    actual_sha256=$(sha256sum "$archive" | cut -d' ' -f1)
+  else
+    actual_sha256=$(shasum -a 256 "$archive" | cut -d' ' -f1)
+  fi
+  if [[ "$actual_sha256" == "$expected_sha256" ]]; then
+    downloaded=true
+    break
+  fi
+  echo "SHA256 mismatch for $archive from $mirror: expected $expected_sha256, got $actual_sha256"
+done
+if [[ "$downloaded" != true ]]; then
+  echo "Failed to download $archive" >&2
   exit 1
 fi
 tar -xf "$archive" -C "$src_dir" --strip-components=1
