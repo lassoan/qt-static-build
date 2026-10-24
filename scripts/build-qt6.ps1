@@ -79,17 +79,17 @@ Move-Item (Join-Path $ExtractDir "qtbase-everywhere-src-$QtVersion") $SrcDir
 
 Write-Host "Configuring Qt"
 
-# Link-time code generation, size optimization and leaving out the built-in
-# MIME database and time zone support (about 4 MB each) reduce the size
-# of the executables linking Qt. The resulting static libraries contain LTCG
-# objects, which can only be linked using the same MSVC toolset version.
+# Size optimization and leaving out the built-in MIME database and time zone
+# support (about 4 MB each) reduce the size of the executables linking Qt.
+# Link-time code generation (-ltcg) is not used: it did not reduce the size of
+# the CTKAppLauncher executable, increased the archive size from 29 MB to
+# 400 MB, and would require linking with the same MSVC toolset version.
 Push-Location $BuildDir
 Invoke-Checked "$SrcDir\configure.bat" `
   -prefix $Prefix `
   -release `
   -static `
   -static-runtime `
-  -ltcg `
   -optimize-size `
   -no-feature-mimetype-database `
   -no-feature-timezone `
